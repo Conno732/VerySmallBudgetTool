@@ -101,15 +101,13 @@ function daysBetween(date1, date2) {
 
 function applyDailyAllowance() {
   const now = new Date();
-
-  // Only apply after 12pm
   if (now.getHours() < 12) return;
 
   const today = now.toISOString().split("T")[0];
 
-  // First run ever
+  // First run
   if (!data.lastAllowanceDate) {
-    data.balance += Number(data.dailyBudget);
+    creditDay(today);
     data.lastAllowanceDate = today;
     save();
     return;
@@ -117,32 +115,59 @@ function applyDailyAllowance() {
 
   const missedDays = daysBetween(data.lastAllowanceDate, today);
 
+  for (let i = 1; i <= missedDays; i++) {
+    const day = new Date(data.lastAllowanceDate);
+    day.setDate(day.getDate() + i);
+    creditDay(day.toISOString().split("T")[0]);
+  }
+
   if (missedDays > 0) {
-    data.balance += missedDays * Number(data.dailyBudget);
     data.lastAllowanceDate = today;
     save();
   }
-} 
+}
 
-  function addTransaction() {
-    const name = document.getElementById("nameInput").value.trim();
-    const price = parseFloat(document.getElementById("priceInput").value);
+function creditDay(day) {
+  const amount = Number(data.dailyBudget);
 
-    if (!name || isNaN(price)) return;
+  data.balance += amount;
 
-    data.balance -= price;
-    data.transactions.push({
-      id: Date.now(),
-      name,
-      price
-    });
+  data.transactions.push({
+    id: Date.now() + Math.random(),
+    name: "Daily Allowance",
+    price: -amount, // negative = income
+    day,
+    timestamp: new Date(`${day}T12:00:00`).toISOString()
+  });
+}
 
-    document.getElementById("nameInput").value = "";
-    document.getElementById("priceInput").value = "";
 
-    save();
-    updateUI();
-  }
+function addTransaction() {
+  const name = document.getElementById("nameInput").value.trim();
+  const price = parseFloat(document.getElementById("priceInput").value);
+
+  if (!name || isNaN(price)) return;
+
+  const now = new Date();
+  const day = now.toISOString().split("T")[0];
+
+  data.balance -= price;
+
+  data.transactions.push({
+    id: Date.now(),
+    name,
+    price,
+    day,
+    timestamp: now.toISOString()
+  });
+
+  document.getElementById("nameInput").value = "";
+  document.getElementById("priceInput").value = "";
+
+  save();
+  updateUI();
+}
+
 
   function renderLog() {
     const log = document.getElementById("log");
