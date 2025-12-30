@@ -92,7 +92,16 @@
     document.getElementById("dailyBudget").value = data.dailyBudget;
     renderLog();
   }
+function formatDay(day) {
+  return new Date(day).toLocaleDateString();
+}
 
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
 function daysBetween(date1, date2) {
   const d1 = new Date(date1);
   const d2 = new Date(date2);
@@ -169,46 +178,60 @@ function addTransaction() {
 }
 
 
-  function renderLog() {
-    const log = document.getElementById("log");
-    log.innerHTML = "";
+function renderLog() {
+  const log = document.getElementById("log");
+  log.innerHTML = "";
 
-    data.transactions.reverse().forEach((t, index) => {
-      const div = document.createElement("div");
-      div.className = "entry";
+  [...data.transactions].reverse().forEach((t, reversedIndex) => {
+    const index = data.transactions.length - 1 - reversedIndex;
 
-      const nameInput = document.createElement("input");
-      nameInput.value = t.name;
+    const div = document.createElement("div");
+    div.className = "entry";
+    div.style.flexDirection = "column";
 
-      const priceInput = document.createElement("input");
-      priceInput.type = "number";
-      priceInput.step = "0.01";
-      priceInput.value = t.price;
+    // Date header
+    const meta = document.createElement("div");
+    meta.style.fontSize = "0.8em";
+    meta.style.opacity = "0.7";
+    meta.textContent = `${formatDay(t.day)} • ${formatTime(t.timestamp)}`;
 
-      const saveBtn = document.createElement("button");
-      saveBtn.textContent = "Save";
-      saveBtn.onclick = () => {
-        const oldPrice = t.price;
-        t.name = nameInput.value;
-        t.price = parseFloat(priceInput.value);
-        data.balance += oldPrice - t.price;
-        save();
-        updateUI();
-      };
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "5px";
 
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Del";
-      delBtn.onclick = () => {
-        data.balance += t.price;
-        data.transactions.splice(index, 1);
-        save();
-        updateUI();
-      };
+    const nameInput = document.createElement("input");
+    nameInput.value = t.name;
 
-      div.append(nameInput, priceInput, saveBtn, delBtn);
-      log.appendChild(div);
-    });
-  }
+    const priceInput = document.createElement("input");
+    priceInput.type = "number";
+    priceInput.step = "0.01";
+    priceInput.value = t.price;
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.onclick = () => {
+      const oldPrice = t.price;
+      t.name = nameInput.value;
+      t.price = parseFloat(priceInput.value);
+      data.balance += oldPrice - t.price;
+      save();
+      updateUI();
+    };
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Del";
+    delBtn.onclick = () => {
+      data.balance += t.price;
+      data.transactions.splice(index, 1);
+      save();
+      updateUI();
+    };
+
+    row.append(nameInput, priceInput, saveBtn, delBtn);
+    div.append(meta, row);
+    log.appendChild(div);
+  });
+}
 
   document.getElementById("dailyBudget").addEventListener("change", e => {
     data.dailyBudget = parseFloat(e.target.value);
