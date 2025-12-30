@@ -148,7 +148,7 @@ function applyDailyAllowance() {
     const log = document.getElementById("log");
     log.innerHTML = "";
 
-    data.transactions.forEach((t, index) => {
+    data.transactions.reverse().forEach((t, index) => {
       const div = document.createElement("div");
       div.className = "entry";
 
