@@ -110,11 +110,12 @@ function daysBetween(date1, date2) {
 
 function applyDailyAllowance() {
   const now = new Date();
+
+  // Local noon check
   if (now.getHours() < 12) return;
 
-  const today = now.toISOString().split("T")[0];
+  const today = getLocalDay(now);
 
-  // First run
   if (!data.lastAllowanceDate) {
     creditDay(today);
     data.lastAllowanceDate = today;
@@ -122,33 +123,33 @@ function applyDailyAllowance() {
     return;
   }
 
-  const missedDays = daysBetween(data.lastAllowanceDate, today);
+  let cursor = new Date(data.lastAllowanceDate);
+  cursor.setDate(cursor.getDate() + 1);
 
-  for (let i = 1; i <= missedDays; i++) {
-    const day = new Date(data.lastAllowanceDate);
-    day.setDate(day.getDate() + i);
-    creditDay(day.toISOString().split("T")[0]);
+  while (getLocalDay(cursor) <= today) {
+    creditDay(getLocalDay(cursor));
+    cursor.setDate(cursor.getDate() + 1);
   }
 
-  if (missedDays > 0) {
-    data.lastAllowanceDate = today;
-    save();
-  }
+  data.lastAllowanceDate = today;
+  save();
 }
 
 function creditDay(day) {
   const amount = Number(data.dailyBudget);
-
   data.balance += amount;
+
+  const noon = new Date(`${day}T12:00`);
 
   data.transactions.push({
     id: Date.now() + Math.random(),
     name: "Daily Allowance",
-    price: -amount, // negative = income
+    price: -amount,
     day,
-    timestamp: new Date(`${day}T12:00:00`).toISOString()
+    timestamp: getLocalTimestamp(noon)
   });
 }
+
 
 
 function addTransaction() {
@@ -158,16 +159,14 @@ function addTransaction() {
   if (!name || isNaN(price)) return;
 
   const now = new Date();
-  const day = now.toISOString().split("T")[0];
 
   data.balance -= price;
-
   data.transactions.push({
     id: Date.now(),
     name,
     price,
-    day,
-    timestamp: now.toISOString()
+    day: getLocalDay(now),
+    timestamp: getLocalTimestamp(now)
   });
 
   document.getElementById("nameInput").value = "";
@@ -175,6 +174,18 @@ function addTransaction() {
 
   save();
   updateUI();
+}
+
+function getLocalDay(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getLocalTimestamp(date = new Date()) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date - offset).toISOString().slice(0, -1);
 }
 
 
