@@ -111,11 +111,12 @@ function daysBetween(date1, date2) {
 function applyDailyAllowance() {
   const now = new Date();
 
-  // Local noon check
+  // Only after local noon
   if (now.getHours() < 12) return;
 
   const today = getLocalDay(now);
 
+  // First ever run
   if (!data.lastAllowanceDate) {
     creditDay(today);
     data.lastAllowanceDate = today;
@@ -123,17 +124,24 @@ function applyDailyAllowance() {
     return;
   }
 
-  let cursor = new Date(data.lastAllowanceDate);
-  cursor.setDate(cursor.getDate() + 1);
+  let day = data.lastAllowanceDate;
 
-  while (getLocalDay(cursor) <= today) {
-    creditDay(getLocalDay(cursor));
-    cursor.setDate(cursor.getDate() + 1);
+  while (day < today) {
+    day = nextDay(day);
+    creditDay(day);
   }
 
   data.lastAllowanceDate = today;
   save();
 }
+
+function nextDay(day) {
+  const [y, m, d] = day.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + 1);
+  return getLocalDay(date);
+}
+
 
 function creditDay(day) {
   const amount = Number(data.dailyBudget);
