@@ -1,272 +1,496 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <meta charset="UTF-8">
-  <title>Daily Budget Tracker</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-    }
-    .balance {
-      font-size: 1.8em;
-      text-align: center;
-      margin: 10px 0;
-    }
-    input, button {
-      padding: 6px;
-      margin: 4px 0;
-      width: 100%;
-    }
-    .row {
-      display: flex;
-      gap: 5px;
-    }
-    .row input {
-      flex: 1;
-    }
-    .log {
-      max-height: 250px;
-      overflow-y: auto;
-      background: white;
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-    .entry {
-      display: flex;
-      gap: 5px;
-      margin-bottom: 5px;
-    }
-    .entry input {
-      flex: 1;
-    }
-    .entry button {
-      width: 60px;
-    }
-  </style>
-</head>
-<body>
+  <head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="UTF-8" />
+    <title>Money Tracking</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+        max-width: 500px;
+        margin: auto;
+      }
+      h1 {
+        text-align: center;
+      }
+      .balance {
+        font-size: 1.8em;
+        text-align: center;
+        margin: 10px 0;
+      }
+      input,
+      button {
+        padding: 6px;
+        margin: 4px 0;
+        width: 100%;
+      }
+      .row {
+        display: flex;
+        gap: 5px;
+      }
+      .row input {
+        flex: 1;
+      }
+      .log {
+        max-height: 250px;
+        overflow-y: auto;
+        background: white;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      .entry {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 5px;
+      }
+      .entry input {
+        flex: 1;
+      }
+      .entry button {
+        width: 60px;
+      }
+      .tabs {
+        display: flex;
+        border-bottom: 2px solid #ccc;
+        margin-bottom: 15px;
+      }
 
-<h1>Daily Budget</h1>
+      .tab-btn {
+        flex: 1;
+        padding: 10px;
+        cursor: pointer;
+        background: #eaeaea;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        font-size: 1em;
+        text-align: center;
+      }
 
-<label>Daily Allowance ($)</label>
-<input type="number" id="dailyBudget" step="0.01">
+      .tab-btn:not(:last-child) {
+        border-right: none;
+      }
 
-<div class="balance">
-  Balance: $<span id="balance">0.00</span>
-</div>
+      .tab-btn.active {
+        background: white;
+        font-weight: bold;
+        border-bottom: 2px solid white;
+      }
+      .tab-content {
+        animation: fade 0.15s ease-in;
+      }
 
-<h3>Add Transaction</h3>
-<div class="row">
-  <input id="nameInput" placeholder="Name">
-  <input id="priceInput" type="number" step="0.01" placeholder="Price">
-</div>
-<button onclick="addTransaction()">Add</button>
+      @keyframes fade {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tabs">
+      <div class="tab-btn active" onclick="showTab('budget')">Budget</div>
+      <div class="tab-btn" onclick="showTab('stats')">Stats</div>
+    </div>
 
-<h3>Transactions</h3>
-<div class="log" id="log"></div>
+    <script>
+      function showTab(id) {
+        // buttons
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        event.target.classList.add("active");
 
-<script>
-  const STORAGE_KEY = "budgetAppData";
+        // content
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((c) => (c.style.display = "none"));
+        const tab = document.getElementById(id);
+        tab.style.display = "block";
+      }
+    </script>
 
-  let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
-    balance: 0,
-    dailyBudget: 50,
-    lastAllowanceDate: null,
-    transactions: []
-  };
+    <div id="stats" class="tab-content" style="display: none">
+      <h2>Commodities</h2>
+      <div id="commodities"></div>
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
+      <h3>Other Accounts / Custom Fields</h3>
+      <input id="customName" placeholder="Name" />
+      <input id="customAmount" type="number" step="1" placeholder="Amount $" />
+      <button onclick="addCustomField()">Add</button>
+      <div id="customFields"></div>
 
-  function updateUI() {
-    document.getElementById("balance").textContent = data.balance.toFixed(2);
-    document.getElementById("dailyBudget").value = data.dailyBudget;
-    renderLog();
-  }
-function formatDay(day) {
-  return new Date(day).toLocaleDateString();
-}
+      <h2>Net Worth</h2>
+      <div id="netWorth"></div>
 
-function formatTime(ts) {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-function daysBetween(date1, date2) {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
-}
+      <script>
+        function savee() {
+          localStorage.setItem("STORAGE_KEY", JSON.stringify(dataa));
+        }
+        let dataa = JSON.parse(localStorage.getItem("STORAGE_KEY")) || {
+          balance: 0,
+          dailyBudget: 50,
+          lastAllowanceDate: null,
+          transactions: [],
+        };
+        // Initialize assets if missing
+        dataa.assets ??= {
+          commodities: [
+            { type: "gold", amount: 0 },
+            { type: "silver", amount: 0 },
+            { type: "platinum", amount: 0 },
+            { type: "palladium", amount: 0 },
+          ],
+          custom: [],
+          otherAccounts: 0,
+        };
+        savee();
 
-function applyDailyAllowance() {
-  const now = new Date();
+        let spotPrices = {};
+        let lastPriceFetch = 0;
 
-  // Only after local noon
-  if (now.getHours() < 12) return;
+        async function fetchSpotPrices() {
+          const ONE_HOUR = 60 * 60 * 1000;
+          if (Date.now() - lastPriceFetch < ONE_HOUR) return;
 
-  const today = getLocalDay(now);
+          try {
+            const res = await fetch("https://data.silv.app/commodities.json");
+            const json = await res.json();
+            spotPrices = {};
+            console.log(json);
+            spotPrices["gold"] = json.commodities.gold.price;
+            spotPrices["silver"] = json.commodities.silver.price;
+            spotPrices["platinum"] = json.commodities.platinum.price;
+            spotPrices["palladium"] = json.commodities.palladium.price;
 
-  // First ever run
-  if (!data.lastAllowanceDate) {
-    creditDay(today);
-    data.lastAllowanceDate = today;
-    save();
-    return;
-  }
+            lastPriceFetch = Date.now();
+          } catch (e) {
+            console.error("Failed to fetch prices", e);
+          }
+        }
 
-  let day = data.lastAllowanceDate;
+        async function renderStats() {
+          await fetchSpotPrices();
 
-  while (day < today) {
-    day = nextDay(day);
-    creditDay(day);
-  }
+          let total = dataa.balance || 0; // include cash balance
 
-  data.lastAllowanceDate = today;
-  save();
-}
+          // --- Commodities ---
+          const container = document.getElementById("commodities");
+          container.innerHTML = "";
+          dataa.assets.commodities.forEach((c) => {
+            const price = spotPrices[c.type] || 0;
+            const value = c.amount * price;
+            total += value;
 
-function nextDay(day) {
-  const [y, m, d] = day.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + 1);
-  return getLocalDay(date);
-}
+            const row = document.createElement("div");
+            row.className = "entry";
+            row.style.display = "flex";
+            row.style.gap = "10px";
+            row.style.alignItems = "center";
+            row.style.marginBottom = "5px";
 
+            row.innerHTML = `
+          <strong style="width:100px">${c.type.toUpperCase()}</strong>
+          <input type="number" value="${
+            c.amount
+          }" step="1" style="width:80px"> oz
+          @ $${price.toFixed(2)} = $${value.toFixed(2)}
+        `;
 
-function creditDay(day) {
-  const amount = Number(data.dailyBudget);
-  data.balance += amount;
+            const amtInput = row.querySelector("input");
+            amtInput.onchange = () => {
+              c.amount = parseFloat(amtInput.value) || 0;
+              savee();
+              renderStats();
+            };
 
-  const noon = new Date(`${day}T12:00`);
+            container.appendChild(row);
+          });
 
-  data.transactions.push({
-    id: Date.now() + Math.random(),
-    name: "Daily Allowance",
-    price: -amount,
-    day,
-    timestamp: getLocalTimestamp(noon)
-  });
-}
+          // --- Custom Fields ---
+          const customContainer = document.getElementById("customFields");
+          customContainer.innerHTML = "";
+          dataa.assets.custom.forEach((c, index) => {
+            total += c.amount;
 
+            const row = document.createElement("div");
+            row.className = "entry";
+            row.style.display = "flex";
+            row.style.gap = "10px";
+            row.style.alignItems = "center";
+            row.style.marginBottom = "5px";
 
+            row.innerHTML = `
+          <strong style="width:100px">${c.name}</strong>
+          <input type="number" value="${c.amount}" step="0.01" style="width:100px"> $
+          <button>Del</button>
+        `;
 
-function addTransaction() {
-  const name = document.getElementById("nameInput").value.trim();
-  const price = parseFloat(document.getElementById("priceInput").value);
+            const amtInput = row.querySelector("input");
+            const delBtn = row.querySelector("button");
 
-  if (!name || isNaN(price)) return;
+            amtInput.onchange = () => {
+              c.amount = parseFloat(amtInput.value) || 0;
+              savee();
+              renderStats();
+            };
 
-  const now = new Date();
+            delBtn.onclick = () => {
+              dataa.assets.custom.splice(index, 1);
+              savee();
+              renderStats();
+            };
 
-  data.balance -= price;
-  data.transactions.push({
-    id: Date.now(),
-    name,
-    price,
-    day: getLocalDay(now),
-    timestamp: getLocalTimestamp(now)
-  });
+            customContainer.appendChild(row);
+          });
 
-  document.getElementById("nameInput").value = "";
-  document.getElementById("priceInput").value = "";
+          // Update Net Worth
+          document.getElementById("netWorth").textContent = `$${total.toFixed(
+            2
+          )}`;
+        }
 
-  save();
-  updateUI();
-}
+        function addCustomField() {
+          const name = document.getElementById("customName").value.trim();
+          const amount = parseFloat(
+            document.getElementById("customAmount").value
+          );
+          if (!name || isNaN(amount)) return;
 
-function getLocalDay(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+          dataa.assets.custom.push({ name, amount });
+          document.getElementById("customName").value = "";
+          document.getElementById("customAmount").value = "";
+          savee();
+          renderStats();
+        }
 
-function getLocalTimestamp(date = new Date()) {
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date - offset).toISOString().slice(0, -1);
-}
+        // Initial render
+        renderStats();
 
+        // Refresh spot prices every hour
+        setInterval(renderStats, 60 * 60 * 1000);
+      </script>
+    </div>
 
-function renderLog() {
-  const log = document.getElementById("log");
-  log.innerHTML = "";
+    <!-- BUDGET TAB -->
+    <div id="budget" class="tab-content">
+      <div id="tabContent"></div>
 
-  [...data.transactions].reverse().forEach((t, reversedIndex) => {
-    const index = data.transactions.length - 1 - reversedIndex;
+      <h1>Daily Budget</h1>
 
-    const div = document.createElement("div");
-    div.className = "entry";
-    div.style.flexDirection = "column";
+      <label>Daily Allowance ($)</label>
+      <input type="number" id="dailyBudget" step="0.01" />
 
-    // Date header
-    const meta = document.createElement("div");
-    meta.style.fontSize = "0.8em";
-    meta.style.opacity = "0.7";
-    meta.textContent = `${formatDay(t.day)} • ${formatTime(t.timestamp)}`;
+      <div class="balance">Balance: $<span id="balance">0.00</span></div>
 
-    const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.gap = "5px";
+      <h3>Add Transaction</h3>
+      <div class="row">
+        <input id="nameInput" placeholder="Name" />
+        <input id="priceInput" type="number" step="0.01" placeholder="Price" />
+      </div>
+      <button onclick="addTransaction()">Add</button>
 
-    const nameInput = document.createElement("input");
-    nameInput.value = t.name;
+      <h3>Transactions</h3>
+      <div class="log" id="log"></div>
+      <script>
+        const STORAGE_KEY = "budgetAppData";
 
-    const priceInput = document.createElement("input");
-    priceInput.type = "number";
-    priceInput.step = "0.01";
-    priceInput.value = t.price;
+        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+          balance: 0,
+          dailyBudget: 50,
+          lastAllowanceDate: null,
+          transactions: [],
+        };
 
-    const saveBtn = document.createElement("button");
-    saveBtn.textContent = "Save";
-    saveBtn.onclick = () => {
-      const oldPrice = t.price;
-      t.name = nameInput.value;
-      t.price = parseFloat(priceInput.value);
-      data.balance += oldPrice - t.price;
-      save();
-      updateUI();
-    };
+        function save() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
 
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "Del";
-    delBtn.onclick = () => {
-      data.balance += t.price;
-      data.transactions.splice(index, 1);
-      save();
-      updateUI();
-    };
+        function updateUI() {
+          document.getElementById("balance").textContent =
+            data.balance.toFixed(2);
+          document.getElementById("dailyBudget").value = data.dailyBudget;
+          renderLog();
+        }
+        function formatDay(day) {
+          return new Date(day).toLocaleDateString();
+        }
 
-    row.append(nameInput, priceInput, saveBtn, delBtn);
-    div.append(meta, row);
-    log.appendChild(div);
-  });
-}
+        function formatTime(ts) {
+          return new Date(ts).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+        function daysBetween(date1, date2) {
+          const d1 = new Date(date1);
+          const d2 = new Date(date2);
+          return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+        }
 
-  document.getElementById("dailyBudget").addEventListener("change", e => {
-    data.dailyBudget = parseFloat(e.target.value);
-    save();
-  });
+        function applyDailyAllowance() {
+          const now = new Date();
 
-  // Initial run
-  applyDailyAllowance();
-  updateUI();
+          // Only after local noon
+          if (now.getHours() < 12) return;
 
-  // Re-check allowance every minute
-  setInterval(() => {
-    applyDailyAllowance();
-    updateUI();
-  }, 60000);
-</script>
+          const today = getLocalDay(now);
 
-</body>
+          // First ever run
+          if (!data.lastAllowanceDate) {
+            creditDay(today);
+            data.lastAllowanceDate = today;
+            save();
+            return;
+          }
+
+          let day = data.lastAllowanceDate;
+
+          while (day < today) {
+            day = nextDay(day);
+            creditDay(day);
+          }
+
+          data.lastAllowanceDate = today;
+          save();
+        }
+
+        function nextDay(day) {
+          const [y, m, d] = day.split("-").map(Number);
+          const date = new Date(y, m - 1, d);
+          date.setDate(date.getDate() + 1);
+          return getLocalDay(date);
+        }
+
+        function creditDay(day) {
+          const amount = Number(data.dailyBudget);
+          data.balance += amount;
+
+          const noon = new Date(`${day}T12:00`);
+
+          data.transactions.push({
+            id: Date.now() + Math.random(),
+            name: "Daily Allowance",
+            price: -amount,
+            day,
+            timestamp: getLocalTimestamp(noon),
+          });
+        }
+
+        function addTransaction() {
+          const name = document.getElementById("nameInput").value.trim();
+          const price = parseFloat(document.getElementById("priceInput").value);
+
+          if (!name || isNaN(price)) return;
+
+          const now = new Date();
+
+          data.balance -= price;
+          data.transactions.push({
+            id: Date.now(),
+            name,
+            price,
+            day: getLocalDay(now),
+            timestamp: getLocalTimestamp(now),
+          });
+
+          document.getElementById("nameInput").value = "";
+          document.getElementById("priceInput").value = "";
+
+          save();
+          updateUI();
+        }
+
+        function getLocalDay(date = new Date()) {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, "0");
+          const d = String(date.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+
+        function getLocalTimestamp(date = new Date()) {
+          const offset = date.getTimezoneOffset() * 60000;
+          return new Date(date - offset).toISOString().slice(0, -1);
+        }
+
+        function renderLog() {
+          const log = document.getElementById("log");
+          log.innerHTML = "";
+
+          [...data.transactions].reverse().forEach((t, reversedIndex) => {
+            const index = data.transactions.length - 1 - reversedIndex;
+
+            const div = document.createElement("div");
+            div.className = "entry";
+            div.style.flexDirection = "column";
+
+            // Date header
+            const meta = document.createElement("div");
+            meta.style.fontSize = "0.8em";
+            meta.style.opacity = "0.7";
+            meta.textContent = `${formatDay(t.day)} • ${formatTime(
+              t.timestamp
+            )}`;
+
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.gap = "5px";
+
+            const nameInput = document.createElement("input");
+            nameInput.value = t.name;
+
+            const priceInput = document.createElement("input");
+            priceInput.type = "number";
+            priceInput.step = "0.01";
+            priceInput.value = t.price;
+
+            const saveBtn = document.createElement("button");
+            saveBtn.textContent = "Save";
+            saveBtn.onclick = () => {
+              const oldPrice = t.price;
+              t.name = nameInput.value;
+              t.price = parseFloat(priceInput.value);
+              data.balance += oldPrice - t.price;
+              save();
+              updateUI();
+            };
+
+            const delBtn = document.createElement("button");
+            delBtn.textContent = "Del";
+            delBtn.onclick = () => {
+              data.balance += t.price;
+              data.transactions.splice(index, 1);
+              save();
+              updateUI();
+            };
+
+            row.append(nameInput, priceInput, saveBtn, delBtn);
+            div.append(meta, row);
+            log.appendChild(div);
+          });
+        }
+
+        document
+          .getElementById("dailyBudget")
+          .addEventListener("change", (e) => {
+            data.dailyBudget = parseFloat(e.target.value);
+            save();
+          });
+
+        // Initial run
+        applyDailyAllowance();
+        updateUI();
+
+        // Re-check allowance every minute
+        setInterval(() => {
+          applyDailyAllowance();
+          updateUI();
+        }, 60000);
+      </script>
+    </div>
+  </body>
 </html>
